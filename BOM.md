@@ -1,6 +1,6 @@
 | **Module**                   | **Qty** | **Description**                                  | **Source**         | **Component Name**                                                                 | **Cost**   |
 |------------------------------|---------|--------------------------------------------------|--------------------|------------------------------------------------------------------------------------|------------|
-| Raspberry Pi 5               | 1       | Main computer; compact yet powerful              | Amazon             | [Raspberry Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/)             | $89.00     |
+| Raspberry Pi pico            | 1       | Main computer; compact yet powerful              | Amazon             | [Raspberry Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/)             | $89.00     |
 | Fan                          | 1       | Keeps Pi cool during heavy usage                 | Amazon             | [Argon Thermal Cooler](https://www.amazon.com/dp/B08L1WJZGQ)                       | $11.99     |
 |                              | 1       | Touchscreen for visual interface                 | Waveshare          | [10.4" LCD Display](https://www.waveshare.com/10.4inch-1920x1200-hdmi-lcd.htm)     | $115.99    |
 |                              | 1       | RGB button for power control                     | Amazon             | [ChromaTek RGB Button](https://www.amazon.com/dp/B08MTY4FBN)                       | $14.95     |
