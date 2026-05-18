@@ -227,7 +227,7 @@ def generate_sequence(length: int = SEQUENCE_LENGTH) -> list:
 '''Score Sending'''
 
 
-def send_score(elapsed: float):
+def send_score(elapsed: float, attempts : int):
     #Replace with actual leaderboard computer IP
     if COMPUTER_IP == "Your Computer IP":
         print("[Sync] Computer IP not set, skipping Sync")
@@ -235,7 +235,7 @@ def send_score(elapsed: float):
     try:
         response = requests.post(
             LEADERBOARD_URL,
-            json = {"time" : elapsed}
+            json = {"time" : elapsed, "attempts" : attempts}
             timeout = 5
         )
         if response.status_code == 200:
@@ -298,7 +298,7 @@ def play_game() -> float | None:
     elapsed = time.time() - start_time
     lcd_show(f"{elapsed:.2f}s!")
     print(f"\nCompleted in {elapsed:.3f}s over {attempt} attempt(s)!")
-    return elapsed
+    return elapsed, attempt
 
 
 def main():
