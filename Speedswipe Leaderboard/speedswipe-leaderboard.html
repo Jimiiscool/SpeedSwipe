@@ -630,6 +630,13 @@
     });
 
     render();
+    const evtSource = new EventSource("/steam");
+    evtSource.onmessage = function(e) {
+      const data = JSON.parse(e.data);
+      if (data.time !== undefined) {
+        window.triggerRun(data.time, data.attempts || 1);
+      }
+    };
   </script>
 </body>
 </html>
