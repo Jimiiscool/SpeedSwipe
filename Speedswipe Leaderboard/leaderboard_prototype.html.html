@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SPEEDSWIPE! — Leaderboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --fire-yellow: #FFE040;
+      --fire-orange: #FF8800;
+      --fire-red: #CC1500;
+      --fire-dark: #7A0000;
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #2a2a2a;
+      --text: #f0e6d3;
+      --muted: #666;
+      --gold: #FFD700;
+      --silver: #C0C0C0;
+      --bronze: #CD7F32;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px 60px;
+      overflow-x: hidden;
+    }
+
+    /* scanline overlay */
+    body::before {
+      content: '';
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      z-index: 999;
+    }
+
+    /* ---- TITLE CANVAS ---- */
+    #titleCanvas {
+      image-rendering: pixelated;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      color: var(--fire-orange);
+      letter-spacing: 4px;
+      text-align: center;
+      margin-bottom: 48px;
+      opacity: 0.85;
+    }
+
+    /* ---- ADD ENTRY FORM ---- */
+    .add-panel {
+      width: 100%;
+      max-width: 680px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--fire-orange);
+      padding: 24px 28px;
+      margin-bottom: 32px;
+      position: relative;
+    }
+
+    .add-panel::before {
+      content: 'NEW ENTRY';
+      position: absolute;
+      top: -10px;
+      left: 20px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 7px;
+      background: var(--surface);
+      color: var(--fire-orange);
+      padding: 0 8px;
+      letter-spacing: 2px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 6px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .field input {
+      background: #0d0d0d;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 15px;
+      padding: 10px 12px;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+
+    .field input:focus {
+      border-color: var(--fire-orange);
+    }
+
+    .field input::placeholder {
+      color: #333;
+    }
+
+    .btn-add {
+      background: var(--fire-red);
+      border: none;
+      color: #fff;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 7px;
+      padding: 12px 16px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    .btn-add:hover { background: var(--fire-orange); }
+    .btn-add:active { transform: scale(0.97); }
+
+    /* ---- LEADERBOARD TABLE ---- */
+    .board {
+      width: 100%;
+      max-width: 680px;
+    }
+
+    .board-header {
+      display: grid;
+      grid-template-columns: 52px 1fr 140px 100px 80px;
+      gap: 0;
+      padding: 0 16px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .board-header span {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 6px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .board-header span:not(:first-child) { text-align: center; }
+
+    .entry {
+      display: grid;
+      grid-template-columns: 52px 1fr 140px 100px 80px;
+      gap: 0;
+      padding: 14px 16px;
+      border-bottom: 1px solid #1a1a1a;
+      align-items: center;
+      position: relative;
+      transition: background 0.15s;
+      animation: slideIn 0.3s ease forwards;
+      opacity: 0;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(-16px); opacity: 0; }
+      to   { transform: translateX(0);     opacity: 1; }
+    }
+
+    .entry:hover { background: #1a1a1a; }
+
+    .entry.rank-1 { border-left: 3px solid var(--gold); }
+    .entry.rank-2 { border-left: 3px solid var(--silver); }
+    .entry.rank-3 { border-left: 3px solid var(--bronze); }
+
+    .rank {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+    }
+    .rank-1 .rank { color: var(--gold); }
+    .rank-2 .rank { color: var(--silver); }
+    .rank-3 .rank { color: var(--bronze); }
+    .entry:not(.rank-1):not(.rank-2):not(.rank-3) .rank { color: var(--muted); }
+
+    .name {
+      font-size: 16px;
+      letter-spacing: 1px;
+      color: var(--text);
+    }
+
+    .time {
+      text-align: center;
+      font-size: 15px;
+      color: var(--fire-yellow);
+      letter-spacing: 1px;
+    }
+
+    .entry.rank-1 .time {
+      color: var(--gold);
+      text-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+    }
+
+    .attempts {
+      text-align: center;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .del-btn {
+      text-align: center;
+      background: none;
+      border: none;
+      color: #333;
+      font-size: 14px;
+      cursor: pointer;
+      font-family: 'Share Tech Mono', monospace;
+      transition: color 0.15s;
+      padding: 4px 8px;
+    }
+
+    .del-btn:hover { color: var(--fire-red); }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      line-height: 2.2;
+      border-bottom: 1px solid #1a1a1a;
+    }
+
+    .stats-bar {
+      display: flex;
+      gap: 32px;
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 6px;
+      color: var(--muted);
+      letter-spacing: 2px;
+    }
+
+    .stat-value {
+      font-size: 18px;
+      color: var(--fire-orange);
+    }
+
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr 1fr; }
+      .btn-add { grid-column: span 2; }
+      .board-header, .entry {
+        grid-template-columns: 40px 1fr 110px 80px 50px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="titleCanvas" width="640" height="120"></canvas>
+  <div class="subtitle">LEADERBOARD</div>
+
+  <!-- Add Entry Form -->
+  <div class="add-panel">
+    <div class="form-row">
+      <div class="field">
+        <label>Player Name</label>
+        <input id="inp-name" type="text" placeholder="ACE" maxlength="16" />
+      </div>
+      <div class="field">
+        <label>Time (seconds)</label>
+        <input id="inp-time" type="number" placeholder="12.34" step="0.01" min="0" />
+      </div>
+      <div class="field">
+        <label>Attempts</label>
+        <input id="inp-attempts" type="number" placeholder="3" min="1" />
+      </div>
+      <button class="btn-add" onclick="addEntry()">+ ADD</button>
+    </div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div class="board">
+    <div class="board-header">
+      <span>Rank</span>
+      <span style="text-align:left">Player</span>
+      <span>Time</span>
+      <span>Attempts</span>
+      <span></span>
+    </div>
+    <div id="board-rows"></div>
+    <div class="stats-bar" id="stats-bar" style="display:none;">
+      <div class="stat">
+        <div class="stat-label">Players</div>
+        <div class="stat-value" id="stat-players">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Best Time</div>
+        <div class="stat-value" id="stat-best">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Avg Attempts</div>
+        <div class="stat-value" id="stat-avg">—</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---- PIXEL TITLE CANVAS ----
+    const canvas = document.getElementById('titleCanvas');
+    const ctx = canvas.getContext('2d');
+    const B = 6;
+    const TEXT = 'SPEEDSWIPE!';
+
+    function fireColor(r) {
+      if (r < 0.12) return [255, 245, 120];
+      if (r < 0.28) return [255, 210, 20];
+      if (r < 0.48) return [255, 130, 0];
+      if (r < 0.68) return [220, 50, 0];
+      if (r < 0.85) return [160, 10, 0];
+      return [90, 0, 0];
+    }
+
+    const off = document.createElement('canvas');
+    off.width = 640; off.height = 120;
+    const octx = off.getContext('2d');
+    octx.font = `bold ${B * 7}px "Courier New", monospace`;
+    octx.textBaseline = 'top';
+    octx.fillStyle = '#fff';
+    const tw = octx.measureText(TEXT).width;
+    const startX = (640 - tw) / 2;
+    octx.fillText(TEXT, startX, 16);
+    const imgD = octx.getImageData(0, 0, 640, 120).data;
+
+    const pixels = [];
+    const H = B * 7;
+    const TOP = 16;
+    for (let py = 0; py < 120; py += B) {
+      for (let px = 0; px < 640; px += B) {
+        let hit = false;
+        outer: for (let dy = 0; dy < B; dy++) for (let dx2 = 0; dx2 < B; dx2++) {
+          if (imgD[((py + dy) * 640 + (px + dx2)) * 4 + 3] > 100) { hit = true; break outer; }
+        }
+        if (hit) pixels.push({ px, py, r: Math.max(0, Math.min(1, (py - TOP) / H)) });
+      }
+    }
+
+    let t = 0;
+    let gSlice = null;
+    function sched() {
+      setTimeout(() => {
+        const top = 30 + Math.random() * 40;
+        const bot = top + 20 + Math.random() * 20;
+        const dx = (Math.random() - 0.5) * 18;
+        gSlice = { top, bot, dx };
+        setTimeout(() => { gSlice = null; sched(); }, 70 + Math.random() * 100);
+      }, 3000 + Math.random() * 4000);
+    }
+    sched();
+
+    function drawTitle() {
+      t += 0.02;
+      const oy = Math.round(Math.sin(t) * 8 + Math.sin(t * 0.5) * 3);
+      ctx.clearRect(0, 0, 640, 120);
+      for (const { px, py, r } of pixels) {
+        const worldY = py + oy;
+        if (worldY < 0 || worldY > 114) continue;
+        const sx = gSlice && worldY > gSlice.top && worldY < gSlice.bot ? gSlice.dx : 0;
+        const [red, g, b] = fireColor(r);
+        ctx.fillStyle = '#1a0000';
+        ctx.fillRect(px + sx - 1, worldY - 1, B + 2, B + 2);
+        ctx.fillStyle = `rgb(${red},${g},${b})`;
+        ctx.fillRect(px + sx, worldY, B, B);
+        if (r < 0.3) {
+          ctx.fillStyle = 'rgba(255,255,200,0.35)';
+          ctx.fillRect(px + sx + 1, worldY + 1, B - 2, B - 2);
+        }
+      }
+      requestAnimationFrame(drawTitle);
+    }
+    drawTitle();
+
+    // ---- LEADERBOARD LOGIC ----
+    let entries = JSON.parse(localStorage.getItem('speedswipe_lb') || '[]');
+
+    function save() {
+      localStorage.setItem('speedswipe_lb', JSON.stringify(entries));
+    }
+
+    function formatTime(s) {
+      const secs = parseFloat(s);
+      if (isNaN(secs)) return '—';
+      return secs.toFixed(2) + 's';
+    }
+
+    function render() {
+      const sorted = [...entries].sort((a, b) => a.time - b.time);
+      const container = document.getElementById('board-rows');
+      container.innerHTML = '';
+
+      if (sorted.length === 0) {
+        container.innerHTML = `<div class="empty-state">NO ENTRIES YET<br><br>BE THE FIRST TO SWIPE</div>`;
+        document.getElementById('stats-bar').style.display = 'none';
+        return;
+      }
+
+      sorted.forEach((e, i) => {
+        const rank = i + 1;
+        const row = document.createElement('div');
+        row.className = `entry${rank <= 3 ? ' rank-' + rank : ''}`;
+        row.style.animationDelay = `${i * 40}ms`;
+
+        const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+
+        row.innerHTML = `
+          <div class="rank">${medal}</div>
+          <div class="name">${e.name}</div>
+          <div class="time">${formatTime(e.time)}</div>
+          <div class="attempts">${e.attempts}x</div>
+          <button class="del-btn" onclick="removeEntry(${e.id})" title="Remove">✕</button>
+        `;
+        container.appendChild(row);
+      });
+
+      // stats
+      const statsBar = document.getElementById('stats-bar');
+      statsBar.style.display = 'flex';
+      document.getElementById('stat-players').textContent = sorted.length;
+      document.getElementById('stat-best').textContent = formatTime(sorted[0].time);
+      const avgAttempts = (sorted.reduce((a, b) => a + b.attempts, 0) / sorted.length).toFixed(1);
+      document.getElementById('stat-avg').textContent = avgAttempts;
+    }
+
+    function addEntry() {
+      const name = document.getElementById('inp-name').value.trim().toUpperCase();
+      const time = parseFloat(document.getElementById('inp-time').value);
+      const attempts = parseInt(document.getElementById('inp-attempts').value);
+
+      if (!name) { flash('inp-name'); return; }
+      if (isNaN(time) || time <= 0) { flash('inp-time'); return; }
+      if (isNaN(attempts) || attempts < 1) { flash('inp-attempts'); return; }
+
+      entries.push({ id: Date.now(), name, time, attempts });
+      save();
+      render();
+
+      document.getElementById('inp-name').value = '';
+      document.getElementById('inp-time').value = '';
+      document.getElementById('inp-attempts').value = '';
+      document.getElementById('inp-name').focus();
+    }
+
+    function flash(id) {
+      const el = document.getElementById(id);
+      el.style.borderColor = '#CC1500';
+      setTimeout(() => el.style.borderColor = '', 600);
+    }
+
+    function removeEntry(id) {
+      entries = entries.filter(e => e.id !== id);
+      save();
+      render();
+    }
+
+    // allow Enter key to submit
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') addEntry();
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>SPEEDSWIPE!</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        background: #111;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        overflow: hidden;
+      }
+      canvas {
+        image-rendering: pixelated;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c" width="700" height="180"></canvas>
+
+    <script>
+      const canvas = document.getElementById('c');
+      const ctx = canvas.getContext('2d');
+      const B = 7; // pixel block size
+      const TEXT = 'SPEEDSWIPE!';
+
+      // fire gradient colors based on vertical position ratio
+      function fireColor(r) {
+        if (r < 0.12) return [255, 245, 120];
+        if (r < 0.28) return [255, 210, 20];
+        if (r < 0.48) return [255, 130, 0];
+        if (r < 0.68) return [220, 50, 0];
+        if (r < 0.85) return [160, 10, 0];
+        return [90, 0, 0];
+      }
+
+      // draw text offscreen to detect which pixel blocks to fill
+      const off = document.createElement('canvas');
+      off.width = 700;
+      off.height = 180;
+      const octx = off.getContext('2d');
+      octx.font = `bold ${B * 7}px "Courier New", monospace`;
+      octx.textBaseline = 'top';
+      octx.fillStyle = '#fff';
+      octx.fillText(TEXT, 8, 12);
+      const imgD = octx.getImageData(0, 0, 700, 180).data;
+
+      // collect pixel blocks
+      const pixels = [];
+      const H = B * 7;
+      const TOP = 12;
+      for (let py = 0; py < 180; py += B) {
+        for (let px = 0; px < 700; px += B) {
+          let hit = false;
+          outer: for (let dy = 0; dy < B; dy++) {
+            for (let dx = 0; dx < B; dx++) {
+              if (imgD[((py + dy) * 700 + (px + dx)) * 4 + 3] > 100) {
+                hit = true;
+                break outer;
+              }
+            }
+          }
+          if (hit) {
+            pixels.push({
+              px,
+              py,
+              r: Math.max(0, Math.min(1, (py - TOP) / H))
+            });
+          }
+        }
+      }
+
+      // glitch state
+      let t = 0;
+      let gSlice = null;
+
+      function scheduleGlitch() {
+        setTimeout(() => {
+          const top = 40 + Math.random() * 50;
+          const bot = top + 25 + Math.random() * 25;
+          const dx = (Math.random() - 0.5) * 20;
+          gSlice = { top, bot, dx };
+          setTimeout(() => {
+            gSlice = null;
+            scheduleGlitch();
+          }, 70 + Math.random() * 110);
+        }, 2200 + Math.random() * 3200);
+      }
+      scheduleGlitch();
+
+      // animation loop
+      function loop() {
+        t += 0.022;
+        const oy = Math.round(Math.sin(t) * 10 + Math.sin(t * 0.55) * 4);
+        ctx.clearRect(0, 0, 700, 180);
+
+        for (const { px, py, r } of pixels) {
+          const worldY = py + oy;
+          const sx = gSlice && worldY > gSlice.top && worldY < gSlice.bot ? gSlice.dx : 0;
+          const [red, g, b] = fireColor(r);
+
+          // dark border block
+          ctx.fillStyle = '#1a0000';
+          ctx.fillRect(px + sx - 1, worldY - 1, B + 2, B + 2);
+
+          // fire color block
+          ctx.fillStyle = `rgb(${red},${g},${b})`;
+          ctx.fillRect(px + sx, worldY, B, B);
+
+          // highlight on top pixels
+          if (r < 0.3) {
+            ctx.fillStyle = 'rgba(255,255,200,0.4)';
+            ctx.fillRect(px + sx + 1, worldY + 1, B - 2, B - 2);
+          }
+        }
+        requestAnimationFrame(loop);
+      }
+      loop();
+    </script>
+  </body>
+</html>
