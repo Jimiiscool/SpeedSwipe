@@ -1,0 +1,159 @@
+<canvas id="c" style="display:block;width:100%;height:420px;"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+function noise(x, y, t) {
+  const s1 = Math.sin(x * 0.8 + y * 0.5 + t * 0.3) * 0.4;
+  const s2 = Math.cos(x * 0.4 - y * 0.7 + t * 0.2) * 0.3;
+  const s3 = Math.sin(x * 1.2 + y * 0.9 - t * 0.15) * 0.15;
+  const s4 = Math.cos(x * 0.3 + y * 1.1 + t * 0.25) * 0.15;
+  return s1 + s2 + s3 + s4;
+}
+
+function getHeight(nx, ny, t) {
+  return noise(nx, ny, t);
+}
+
+let t = 0;
+const LINES = 18;
+const BG = '#F9E4BC';
+
+// Warm retro band colors — creams, tans, oranges, reds, yellows, no cool tones
+const BAND_COLORS = [
+  '#F9E4BC', // cream (lowest)
+  '#F2D49B',
+  '#EDBE7A',
+  '#E8A857',
+  '#E09040',
+  '#D4733A',
+  '#C85C30',
+  '#BF4A28',
+  '#C85C30',
+  '#D4733A',
+  '#E09040',
+  '#E8A857',
+  '#F0BC6A',
+  '#F5CC88',
+  '#F2D49B',
+  '#EDD8A8',
+  '#F4E2BE',
+  '#F9E4BC', // cream (highest)
+];
+
+function draw() {
+  const W = canvas.width, H = canvas.height;
+
+  const cols = 160;
+  const rows = 110;
+
+  const grid = [];
+  for (let iy = 0; iy <= rows; iy++) {
+    grid[iy] = [];
+    for (let ix = 0; ix <= cols; ix++) {
+      const nx = (ix / cols) * 6;
+      const ny = (iy / rows) * 4;
+      grid[iy][ix] = getHeight(nx, ny, t);
+    }
+  }
+
+  // Fill background
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw filled bands by painting from lowest level up
+  // For each band between level[i] and level[i+1], fill all pixels in that range
+  const minV = -0.9, maxV = 0.9;
+
+  // Draw filled contour bands using pixel-level approach via imageData
+  const imageData = ctx.createImageData(W, H);
+  const data = imageData.data;
+
+  // Parse band colors to RGB
+  const parsedColors = BAND_COLORS.map(hex => {
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    return [r,g,b];
+  });
+
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      const nx = (px / W) * 6;
+      const ny = (py / H) * 4;
+      const v = getHeight(nx, ny, t);
+
+      const ratio = (v - minV) / (maxV - minV);
+      const bandIdx = Math.min(BAND_COLORS.length - 1, Math.floor(ratio * BAND_COLORS.length));
+      const [r,g,b] = parsedColors[bandIdx];
+
+      const idx = (py * W + px) * 4;
+      data[idx]   = r;
+      data[idx+1] = g;
+      data[idx+2] = b;
+      data[idx+3] = 255;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+
+  // Draw contour lines on top (dark outlines between bands)
+  for (let li = 0; li < LINES; li++) {
+    const level = minV + (li / (LINES - 1)) * (maxV - minV);
+
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(80, 40, 20, 0.55)';
+    ctx.lineWidth = 1.4;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    for (let iy = 0; iy < rows; iy++) {
+      for (let ix = 0; ix < cols; ix++) {
+        const v00 = grid[iy][ix];
+        const v10 = grid[iy][ix + 1];
+        const v01 = grid[iy + 1][ix];
+        const v11 = grid[iy + 1][ix + 1];
+
+        const px = ix / cols * W;
+        const py = iy / rows * H;
+        const dx = W / cols;
+        const dy = H / rows;
+
+        const pts = [];
+
+        function interp(a, b, va, vb) {
+          if ((va < level) === (vb < level)) return null;
+          return (level - va) / (vb - va) * (b - a) + a;
+        }
+
+        const top = interp(px, px + dx, v00, v10);
+        if (top !== null) pts.push([top, py]);
+        const bottom = interp(px, px + dx, v01, v11);
+        if (bottom !== null) pts.push([bottom, py + dy]);
+        const left = interp(py, py + dy, v00, v01);
+        if (left !== null) pts.push([px, left]);
+        const right = interp(py, py + dy, v10, v11);
+        if (right !== null) pts.push([px + dx, right]);
+
+        if (pts.length >= 2) {
+          ctx.moveTo(pts[0][0], pts[0][1]);
+          ctx.lineTo(pts[1][0], pts[1][1]);
+        }
+      }
+    }
+
+    ctx.stroke();
+  }
+
+  t += 0.006;
+  requestAnimationFrame(draw);
+}
+
+draw();
+</script>
